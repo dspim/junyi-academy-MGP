@@ -1,0 +1,116 @@
+---
+title: "Problem Hint EDA"
+author: "Chin-Cheng Liang"
+date: "9/5/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r import, message=F, warning=F}
+library(dplyr)
+library(readr)
+library(magrittr)
+library(ggplot2)
+library(lubridate)
+```
+
+```{r, cache=T}
+all_log_df <- read_csv(
+    "data/Log_ProblemHint-000000000003",
+    col_types = list(
+        "log_problem_quiz_id"=col_character(),
+        "log_video_problem_id"=col_character(),
+        "user_primary_key" = col_character()
+        )
+    ) %>% filter(date <= "2016-12-31")
+```
+
+```{r}
+all_log_df %>% glimpse()
+```
+
+# About users
+
+```{r}
+users <-  all_log_df %>% distinct(user_primary_key)
+```
+
+第一筆使用者
+
+```{r}
+user1 <- users %>% .[[1, 1]]
+user1_log <- all_log_df %>% filter(user_primary_key==user1)
+user1_log %>% count(date) %>% ggplot(aes(x=date, y=n)) + geom_col()
+```
+
+每日 Log 數
+
+```{r}
+all_log_df %>% count(date) %>% ggplot(aes(x=date, y=n)) + geom_col()
+```
+
+當日多少使用者有 Log
+
+```{r}
+daily_active_users <- all_log_df %>%
+    count(date, user_primary_key) %>%
+    count(date)
+    daily_active_users %>% ggplot(aes(x = date, y = nn)) + geom_col()
+```
+
+使用者有 Log 的日數排行
+
+```{r}
+all_log_df %>% count(user_primary_key, date) %>% count(user_primary_key, sort = T)
+```
+
+最持久的使用者
+
+```{r}
+all_log_df %>%
+    filter(user_primary_key=="6315920567130486814") %>%
+    count(date) %>%
+    ggplot(aes(x=date, y=n)) + geom_col()
+```
+
+
+Log 是否有特殊週期趨勢
+
+```{r}
+dau_year_pie <- function(which_year){
+    daily_active_users %>%
+        filter(year(date) == which_year) %>%
+        ggplot(aes(x=day(date), y=nn)) +
+        geom_col() +
+        facet_wrap(~month(date), nrow = 2) +
+        coord_polar(theta="x")
+}
+dau_year_pie(2015)
+```
+
+
+```{r}
+dau_year_pie(2016)
+```
+
+星期比例
+
+```{r}
+all_log_df %>% count(weekday) %>% ggplot(aes(x=weekday, y=n)) + geom_col()
+```
+
+
+```{r}
+users_filtered <- read_csv(
+    "data/JY_YL2015_IDLIST.csv",
+    col_types = list("user_primary_key_hash" = col_character()))
+```
+
+```{r}
+intersect(users_filtered$user_primary_key_hash, all_log_df$user_primary_key) %>% length()
+```
+
+

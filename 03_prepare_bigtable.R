@@ -13,3 +13,8 @@ df %>%
     unique() %>%
     rename(pre_exam= timestamp1, post_exam = timestamp2) %>%
     write_csv("data-committed/01_users_and_exam_time.csv")
+
+
+df %>% select(user_primary_key_hash, title) %>%
+    rename(guideline=title) %>%
+    write_csv("data-committed/02_users_guidelines.csv")

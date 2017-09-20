@@ -15,19 +15,6 @@ users_and_exam_time <- read_csv(
 users_and_exam_time %>% summary
 # pre exam 多在 2015-04-24, post exam 都在 2015-10-30
 
-
-hint_log_df <- read_csv(
-    "data/Log_ProblemHint-000000000003",
-    col_types = list(
-        "log_problem_quiz_id"=col_character(),
-        "log_video_problem_id"=col_character(),
-        "user_primary_key" = col_character()
-    )
-) %>% filter(date <= "2015-10-30") %>%
-    mutate(timestamp_TW = ymd_hms(timestamp_TW))
-
-hint_log_df %>% filter(user_primary_key %in% users_and_exam_time$user_primary_key_hash)
-
 target_users <- users_and_exam_time$user_primary_key_hash
 
 read_log <- function(row) {
@@ -59,36 +46,50 @@ hint_log_df <- paths %>% rowwise() %>% do(read_log(.) ) %>% ungroup()
 hint_log_df_fixed <- hint_log_df %>% filter(user_primary_key!="-1020355799362345007")
 
 
-true_rate <- function(data, of_col, true_false_col){
-    of_col <- enquo(of_col)
-    true_false_col <- enquo(true_false_col)
-    return(
-        data %>%
-            count(!!of_col,!!true_false_col) %>%
-            group_by(!!of_col) %>%
-            summarise(rate = sum(n[(!!true_false_col) == "true"]) / sum(n))
-    )
+true_rate <- function(col) sum(col=="true")/length(col)
+
+hint_log_s1 <- hint_log_df_fixed %>% filter(date >="2015-02-24" & date < "2015-04-23")
+hint_log_s2 <- hint_log_df_fixed %>% filter(date >="2015-09-01" & date < "2015-10-29")
+
+
+get_features <- function(data) {
+    mean_features <- data %>%
+        group_by(user_primary_key) %>%
+        summarise_at(vars(total_time_taken, total_attempt_cnt, hint_cnt),
+                     funs(mean))
+    rate_features <- data %>%
+        group_by(user_primary_key) %>%
+        summarise_at(
+            vars(
+                is_perseus_quiz,
+                is_correct,
+                is_skip,
+                proficiency_earned,
+                exam_mode,
+                topic_mode,
+                review_mode,
+                pretest_mode
+            ),
+            funs(true_rate)
+        )
+    count_features <- data %>% count(user_primary_key)
+    features_df <-
+        mean_features %>%
+        full_join(rate_features, by = "user_primary_key") %>%
+        full_join(count_features, by = "user_primary_key")
+    return(features_df)
 }
 
-# 把這樣    
-# hint_log_df_fixed %>% count(user_primary_key, is_correct) %>% group_by(user_primary_key) %>% summarise(rate=sum(n[is_correct=="true"])/sum(n))
-# 變成這樣
-# hint_log_df_fixed %>% true_rate(user_primary_key, is_correct)
+full_features <- hint_log_df_fixed %>% get_features
+s1_features <- hint_log_s1 %>% get_features
+s2_features <- hint_log_s2 %>% get_features
 
-hint_log_pre <- hint_log_df_fixed %>% filter(date < "2015-04-24" & date >="2015-01-24")
-hint_log_post <- hint_log_df_fixed %>% filter(date < "2015-10-30" & date >="2015-7-30")
-
-get_features <- function(data) data %>%
-    group_by(user_primary_key) %>%
-    summarise_at(vars(total_time_taken, total_attempt_cnt, hint_cnt), funs(mean))
-
-pre_features <- hint_log_pre %>% get_features
-post_features <- hint_log_post %>% get_features
-
-
-hint_features <- pre_features %>%
-    full_join(post_features,
+hint_features <- s1_features %>%
+    full_join(s2_features,
               by = "user_primary_key",
-              suffix = c("pre", "post"))
+              suffix = c("_s1", "_s2")) %>%
+    full_join(full_features,
+              by = "user_primary_key",
+              suffix = c("", "_full"))
 
 hint_features %>% write_csv("data-committed/03_hint_features.csv")

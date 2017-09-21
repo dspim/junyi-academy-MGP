@@ -17,9 +17,14 @@ read_csv_custom <- function(path)
 
 bind_col_custom <- function(x, y) full_join(x, y, by="user_primary_key")
 
-full_table <- list.files("data/drive_data" , full.names = T) %>%
+files_from_data_committed <- c("data-committed/04_video_out.csv")
+files_from_drive <- list.files("data/drive_data" , full.names = T)
+
+files <- c(files_from_data_committed ,  files_from_drive)
+
+full_table <- files %>%
     lapply(read_csv_custom) %>%
     reduce(bind_col_custom)
 
 
-full_table %>% write_csv("./data-committed/04_big_table.csv")
+full_table %>% write_csv("./data-committed/05_big_table.csv")

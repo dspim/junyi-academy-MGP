@@ -1,22 +1,25 @@
 library(readr)
 library(dplyr)
+library(googledrive)
+library(purrr)
+
+# Drive 上的資料
+folder <-
+    drive_ls(as_id("0B8WvtTLcqtbhZVVkRWIwQmU1Qk0"),
+             recursive = T,
+             type = "csv")
+
+dir.create("./data/drive_data")
+folder %>% rowwise() %>% do(drive_download(as_id(.$id), path = paste0("./data/drive_data/", .$name)))
+
+read_csv_custom <- function(path)
+    read_csv(path, col_types = list("user_primary_key" = col_character()))
+
+bind_col_custom <- function(x, y) full_join(x, y, by="user_primary_key")
+
+full_table <- list.files("data/drive_data" , full.names = T) %>%
+    lapply(read_csv_custom) %>%
+    reduce(bind_col_custom)
 
 
-users_and_exam_time <- read_csv(
-    "data-committed/01_users_and_exam_time.csv",
-    col_types = list(
-        "user_primary_key_hash" = col_character()
-        )
-    )
-
-# 參加考試的 5572 使用者，與前測 後測的日期
-users_and_exam_time %>% glimpse()
-
-
-users_guidelines <- read_csv(
-    "data-committed/02_users_guidelines.csv",
-    col_types = list("user_primary_key_hash" = col_character())
-)
-
-# 參加考試的 5572 使用者，有遇到的分年細目
-users_guidelines %>% glimpse()
+full_table %>% write_csv("./data-committed/04_big_table.csv")

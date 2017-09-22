@@ -10,7 +10,11 @@ folder <-
              type = "csv")
 
 dir.create("./data/drive_data")
-folder %>% rowwise() %>% do(drive_download(as_id(.$id), path = paste0("./data/drive_data/", .$name)))
+folder %>% rowwise() %>% do(drive_download(
+    as_id(.$id),
+    path = paste0("./data/drive_data/", .$name),
+    overwrite = T
+))
 
 read_csv_custom <- function(path)
     read_csv(path, col_types = list("user_primary_key" = col_character()))

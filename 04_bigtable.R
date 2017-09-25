@@ -16,8 +16,33 @@ folder %>% rowwise() %>% do(drive_download(
     overwrite = T
 ))
 
+
+users_and_exam_time <- users_and_exam_time <- read_csv(
+    "data-committed/01_users_and_exam_time.csv",
+    col_types = list(
+        "user_primary_key_hash" = col_character()
+    )
+)
+
+
+target_users <- users_and_exam_time$user_primary_key_hash
+n_users <- length(target_users)
+
+
+check_and_fix_df <- function(df, path) {
+    tryCatch({
+        fixed_df <- df %>% filter(user_primary_key %in% target_users)
+        if (nrow(fixed_df) < nrow(df))
+            message(paste(path, "contains users not in target users"))
+        return(fixed_df)
+    }, error = function(e) {
+        warning(paste("failed to fix", path, e))
+    })
+}
+
 read_csv_custom <- function(path)
-    read_csv(path, col_types = list("user_primary_key" = col_character()))
+    read_csv(path, col_types = list("user_primary_key" = col_character())) %>%
+    check_and_fix_df(path)
 
 bind_col_custom <- function(x, y) full_join(x, y, by="user_primary_key")
 

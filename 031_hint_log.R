@@ -61,12 +61,6 @@ get_features <- function(data) {
         group_by(user_primary_key) %>%
         summarise_at(
             vars(
-                is_perseus_quiz,
-                is_correct,
-                is_skip,
-                proficiency_earned,
-                exam_mode,
-                topic_mode,
                 review_mode,
                 pretest_mode
             ),

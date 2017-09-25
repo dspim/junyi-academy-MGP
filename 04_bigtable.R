@@ -9,10 +9,12 @@ folder <-
              recursive = T,
              type = "csv")
 
-dir.create("./data/drive_data")
+drive_data_path <- "./data/drive_data"
+unlink(drive_data_path, recursive = T)
+dir.create(drive_data_path)
 folder %>% rowwise() %>% do(drive_download(
     as_id(.$id),
-    path = paste0("./data/drive_data/", .$name),
+    path = file.path(drive_data_path, .$name),
     overwrite = T
 ))
 
@@ -46,7 +48,7 @@ read_csv_custom <- function(path)
 
 bind_col_custom <- function(x, y) full_join(x, y, by="user_primary_key")
 
-files_from_data_committed <- c("data-committed/04_video_out.csv")
+files_from_data_committed <- c("data-committed/03_hint_features.csv", "data-committed/04_video_out.csv")
 files_from_drive <- list.files("data/drive_data" , full.names = T)
 
 files <- c(files_from_data_committed ,  files_from_drive)

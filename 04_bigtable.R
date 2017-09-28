@@ -12,7 +12,21 @@ folder <-
 drive_data_path <- "./data/drive_data"
 unlink(drive_data_path, recursive = T)
 dir.create(drive_data_path)
-folder %>% rowwise() %>% do(drive_download(
+
+
+
+drive_files_want <- folder %>% anti_join(data_frame(
+    name = c(
+        "OUTSCORE_R.csv",
+        "atLeast9over10.csv",
+        "atLeast5over6.csv",
+        "AllCorrectRate.csv",
+        "FirstCorrectRate.csv",
+        "Badges.csv"
+    )
+))
+
+drive_files_want %>% rowwise() %>% do(drive_download(
     as_id(.$id),
     path = file.path(drive_data_path, .$name),
     overwrite = T
@@ -35,7 +49,7 @@ check_and_fix_df <- function(df, path) {
     tryCatch({
         fixed_df <- df %>% filter(user_primary_key %in% target_users)
         if (nrow(fixed_df) < nrow(df))
-            message(paste(path, "contains users not in target users"))
+            message(paste(path, "contains users not in target users, and has",nrow(fixed_df) ,"rows" ))
         return(fixed_df)
     }, error = function(e) {
         warning(paste("failed to fix", path, e))
@@ -57,5 +71,13 @@ full_table <- files %>%
     lapply(read_csv_custom) %>%
     reduce(bind_col_custom)
 
+
+
+na_table <-
+    full_table %>% summarise_all(funs(100 * mean(is.na(.)))) %>% t  %>% {
+        bind_cols(col_name = row.names(.), as_tibble(.))
+    } %>% rename(na_rate = V1)
+
+na_table %>% filter(na_rate>50)
 
 full_table %>% write_csv("./data-committed/05_big_table.csv")

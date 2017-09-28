@@ -78,6 +78,12 @@ na_table <-
         bind_cols(col_name = row.names(.), as_tibble(.))
     } %>% rename(na_rate = V1)
 
-na_table %>% filter(na_rate>50)
+na_table %>% .$na_rate %>% hist(
+    xlab = "% of rows are NA",
+    ylab = "columns",
+    main = "Histogram of NA in big table",
+    breaks = 30
+)
+na_table %>% filter(na_rate > 50)
 
 full_table %>% write_csv("./data-committed/05_big_table.csv")

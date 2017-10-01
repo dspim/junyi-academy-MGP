@@ -75,7 +75,12 @@ load_csv <- function(path){
 
 bind_col_custom <- function(x, y) full_join(x, y, by="user_primary_key")
 
-files_from_data_committed <- c("data-committed/03_hint_features.csv", "data-committed/04_video_out.csv")
+files_from_data_committed <-
+    c(
+        "data-committed/03_hint_features.csv",
+        "data-committed/04_video_out.csv",
+        "data-committed/041_user_point_2015.csv"
+    )
 files_from_drive <- list.files("data/drive_data" , full.names = T)
 
 files <- c(files_from_data_committed ,  files_from_drive)
@@ -97,6 +102,6 @@ na_table %>% .$na_rate %>% hist(
     main = "Histogram of NA in big table",
     breaks = 30
 )
-na_table %>% filter(na_rate > 50)
+na_table %>% filter(na_rate > 50) %>% arrange(desc(na_rate))
 
 full_table %>% write_csv("./data-committed/05_big_table.csv")

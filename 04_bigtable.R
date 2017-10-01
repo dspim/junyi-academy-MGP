@@ -18,6 +18,7 @@ dir.create(drive_data_path)
 drive_files_want <- folder %>% anti_join(data_frame(
     name = c(
         "OUTSCORE_R.csv",
+        "OUTP_20170925.csv",
         "atLeast9over10.csv",
         "atLeast5over6.csv",
         "AllCorrectRate.csv",
@@ -56,9 +57,21 @@ check_and_fix_df <- function(df, path) {
     })
 }
 
-read_csv_custom <- function(path)
-    read_csv(path, col_types = list("user_primary_key" = col_character())) %>%
+read_csv_custom <- function(path, ...)
+    read_csv(path, col_types = list("user_primary_key" = col_character()), ...) %>%
     check_and_fix_df(path)
+
+# dd <- read_csv_custom("data/drive_data/userinfo_20170925.csv", locale=locale(encoding = "big5"))
+
+big5_csvs<- c("userinfo_20170925.csv")
+
+load_csv <- function(path){
+    if (basename(path) %in% big5_csvs){
+        return(read_csv_custom(path, locale=locale(encoding = "big5")))
+    }else{
+        return(read_csv_custom(path))
+    }
+}
 
 bind_col_custom <- function(x, y) full_join(x, y, by="user_primary_key")
 
@@ -68,10 +81,10 @@ files_from_drive <- list.files("data/drive_data" , full.names = T)
 files <- c(files_from_data_committed ,  files_from_drive)
 
 full_table <- files %>%
-    lapply(read_csv_custom) %>%
+    lapply(load_csv) %>%
     reduce(bind_col_custom)
 
-
+full_table %>% select(user_school)
 
 na_table <-
     full_table %>% summarise_all(funs(100 * mean(is.na(.)))) %>% t  %>% {

@@ -23,7 +23,8 @@ drive_files_want <- folder %>% anti_join(data_frame(
         "atLeast5over6.csv",
         "AllCorrectRate.csv",
         "FirstCorrectRate.csv",
-        "Badges.csv"
+        "Badges.csv",
+        "final_R.csv"
     )
 ))
 

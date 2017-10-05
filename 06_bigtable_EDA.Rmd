@@ -1,0 +1,155 @@
+---
+title: "EDA on bigtable"
+output:
+  html_document:
+    toc: yes
+---
+
+
+```{r setup, warning=FALSE, message=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(corrr)
+library(plotly)
+```
+
+```{r}
+full_table <- read_csv("./data-committed/05_big_table.csv", col_types = list(
+    "user_primary_key" = col_character()
+))
+```
+
+
+# Active or inactive?
+
+篩選出活躍的人，用培軒的簡易規則
+
+```{r}
+df <- full_table %>%
+    mutate(is_active = !is.na(problem_n_s1 > 5 | problem_n_s2 > 5 )) 
+
+df %>% select(problem_n_s1, problem_n_s2, is_active)
+
+df %>% 
+    select(problem_n_s1, problem_n_s2, is_active, score)%>%
+    ggplot(aes(x = score, fill = is_active)) +
+    geom_density(alpha = .3) +
+    ggtitle("Is active members score higher?")
+```
+
+
+# NAs
+
+有些欄位都是空值
+
+```{r}
+na_table <-
+    full_table %>% summarise_all(funs(100 * mean(is.na(.)))) %>% t  %>% {
+        bind_cols(col_name = row.names(.), as_tibble(.))
+    } %>% rename(na_rate = V1)
+
+
+na_table %>%
+    ggplot(aes(x = na_rate)) +
+    geom_histogram(bins = 40) +
+    ggtitle("Histogram of NA in big table") +
+    xlab("% of rows are NA") +
+    ylab("number of columns")
+
+```
+
+```{r}
+too_empty_columns <- na_table %>% filter(na_rate > 30) %>% .$col_name
+
+
+less_columns_table <- full_table %>% select(-one_of(too_empty_columns))
+```
+
+
+# Characters
+
+總共四個欄位是文字，暫不處理
+
+```{r}
+full_table %>% select_if(is.character)
+```
+
+```{r}
+full_table %>%
+    filter(gender %in% c("male", "female")) %>%
+    select(gender, score) %>%
+    ggplot(aes(x = score, fill = gender)) +
+    geom_density(alpha = .3) +
+    ggtitle("Does score differ between gender?")
+```
+
+
+# Column Variation
+
+有些欄位數字根本就都幾乎一樣，篩選掉
+
+```{r}
+Mode <- function(x) {
+    ux <- unique(x)
+    ux[which.max(tabulate(match(x, ux)))]
+}
+
+mode_percent <-
+    function(col) sum(col==Mode(col), na.rm = T) / length(col)
+
+mode_percent_table <-
+    less_columns_table %>%
+    select_if(function(col) ! is.character(col)) %>%
+    summarise_all(funs(mode_percent)) %>% t  %>% {
+        bind_cols(col_name = row.names(.), as_tibble(.))
+    } %>% rename(mode_percent = V1)
+
+mode_percent_table %>%
+    ggplot(aes(x = mode_percent)) +
+    geom_histogram(bins = 40) +
+    ggtitle("How many rows is mode in a column in big table") +
+    xlab("% of mode rows") +
+    ylab("number of columns")
+
+```
+
+```{r}
+too_many_modes_columns <- mode_percent_table %>% filter(mode_percent> 0.75) %>% .$col_name
+assertthat::see_if("greattimedproblembadge" %in% too_many_modes_columns)
+```
+
+
+```{r}
+clean_table <-  full_table %>%
+    mutate(is_active = !is.na(problem_n_s1 > 5 |
+    problem_n_s2 > 5)) %>%
+    select(-one_of(too_empty_columns), -one_of(too_many_modes_columns)) %>%
+    select_if(function(col)
+    ! is.character(col)) %>%
+    filter(is_active)
+```
+
+# Correlation
+
+```{r}
+
+cor_plot <- function(df) {
+    p <- df %>% correlate() %>%
+    rplot() +
+    theme(axis.text.x = element_blank())
+    ggplotly(p)
+}
+    
+clean_table %>% select(-is_active) %>% cor_plot
+```
+
+```{r}
+clean_table %>% select(-is_active, -starts_with("P_"),  -starts_with("O_"), -starts_with("X_")) %>% cor_plot
+```
+
+
+```{r}
+sessionInfo()
+```
+

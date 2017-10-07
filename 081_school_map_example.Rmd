@@ -18,21 +18,28 @@ library(leaflet)
 ```
 
 ```{r warning=F}
-school_latlon <- read_csv("data-committed/07_schools/03_school_latlon.csv") %>% rename(samples = nn)
+school_latlon <- read_csv("data-committed/07_schools/03_school_latlon.csv") %>% rename(student_samples = nn)
 ```
 
 
 # 靜態地圖可用 ggmap 製作
 
-```{r cache=T}
-school_latlon %>% qmplot(lon, lat, data = ., color=level, alpha = .3,size = samples) 
+```{r}
+school_latlon %>% qmplot(
+    lon,
+    lat,
+    data = .,
+    color = level,
+    alpha = .3,
+    size = student_samples
+    ) + guides(alpha = FALSE)
 ```
 
 ```{r}
 pal <- colorFactor(c( "red", "green", "blue"), domain = c("elementary", "junior", "senior"))
 
 school_latlon %>%
-    mutate(label = paste(user_school, samples, "students")) %>%
+    mutate(label = paste(user_school, student_samples, "students")) %>%
     leaflet() %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
     addCircleMarkers(
@@ -41,7 +48,7 @@ school_latlon %>%
     color = ~ pal(level),
     label = ~ label,
     stroke = FALSE,
-    radius =  ~ log(samples),
+    radius =  ~ log(student_samples),
     fillOpacity = 0.5
     ) %>%
     addLegend(pal = pal, values = ~level)

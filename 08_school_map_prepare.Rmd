@@ -1,0 +1,76 @@
+---
+title: "08 School map prepare"
+author: "Chin-Cheng Liang"
+date: "10/7/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(stringr)
+library(dplyr)
+library(tidyr)
+```
+
+從教育部開放資料取得各級學校地址
+
+- https://data.gov.tw/dataset/6087
+- https://data.gov.tw/dataset/6089
+- https://data.gov.tw/dataset/6088
+
+```{r}
+schools <-
+    bind_rows(
+        read_csv("data-committed/07_schools/school_elementary.csv") %>% mutate(level = "elementary"),
+        read_csv("data-committed/07_schools/school_junior.csv") %>% mutate(level = "junior"),
+        read_csv("data-committed/07_schools/school_senior.csv") %>% mutate(level = "senior")
+    ) %>%
+    `colnames<-`(c("_id", "name", "is_public", "city", "address", "phone", "web", "level")) %>%
+    filter(city =="[02]宜蘭縣") %>%
+    mutate(name = name %>% str_replace("市立|私立|縣立", "")) %>%
+    select(name, address, level) %>%
+    mutate(address = str_replace(address, "\\[.*\\]", ""))
+schools
+```
+
+國中小僅內城國民中小學一例，當國中看了， 7, 8 年級也較多
+
+```{r}
+full_table <- read_csv("./data-committed/05_big_table.csv", col_types = list(
+    "user_primary_key" = col_character()
+))
+
+school_address <- full_table %>% 
+    mutate(user_school = user_school %>% 
+               str_replace("宜蘭縣立|縣立", "") %>%
+               str_replace("國民", "國")%>%
+               str_replace("中學", "中") %>%
+               str_replace("高級", "高") %>%
+               str_replace("國中小學", "國中(小)")) %>%
+    count(user_school) %>% 
+    filter(!is.na(user_school) , nn> 5) %>%
+    left_join(schools, by=c("user_school"="name"))
+
+school_address$address %>% writeLines("data-committed/07_schools/01_addresses.txt")
+```
+
+use http://gps.uhooamber.com/address-to-lat-lng.html to turn addresses to lat lon
+
+```{r}
+latlon <- readLines("data-committed/07_schools/02_latlon.txt")
+school_latlon <- school_address %>%
+    mutate(latlon = latlon) %>%
+    separate(latlon, c("lat", "lon"), sep = ",", convert = T)
+
+school_latlon
+```
+
+
+```{r}
+school_latlon %>% write_csv("data-committed/07_schools/03_school_latlon.csv")
+```
+
